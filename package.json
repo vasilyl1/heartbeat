@@ -1,0 +1,21 @@
+{
+  "name": "heartbeat",
+  "version": "1.0.0",
+  "description": "Node.js command-line application to monitor the status of production environment",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vasilyl1/heartbeat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^6.9.13"
+  }
+}
