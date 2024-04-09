@@ -72,7 +72,7 @@ const main = async () => {
     } catch (err) {
         console.error(err);
         try {
-            await emailForm({body:'Production DownTime Alert ' + currentStamp()});
+            await emailForm({body:'Production DownTime Alert ' + err.message + ' ' + currentStamp()});
         } catch (err1) {
             console.error(err1);
         }
