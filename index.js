@@ -61,7 +61,7 @@ const main = async () => {
                 'Content-Type': 'application/json',
                 'x-api-key': process.env.CAPSITE // this is for protection of the server route
             },
-            body: JSON.stringify({message:'heartbeat ver. 1.0.0'}),
+            body: JSON.stringify({ message: 'heartbeat ver. 1.0.0' }),
         });
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
@@ -74,7 +74,7 @@ const main = async () => {
     } catch (err) {
         console.error(err);
         try {
-            await emailForm({body:'Production DownTime Alert ' + err.message + ' ' + currentStamp()});
+            await emailForm({ body: 'Production DownTime Alert ' + err.message + ' ' + currentStamp() });
         } catch (err1) {
             console.error(err1);
         }
@@ -87,29 +87,39 @@ const runCommand = () => {
     const command = process.env.COMMAND;
     const keys = process.env.KEYS.split(' ');
     const logFileName = process.env.LOG_FILE;
-  
+
     const commandProcess = spawn(command, keys);
-  
+
     // Open a writable stream to the specified log file, appending data
     const logFile = fs.createWriteStream(logFileName, { flags: 'a' });
-  
+
     // Pipe the stdout and stderr data to the log file
-    commandProcess.stdout.pipe(logFile);
-    commandProcess.stderr.pipe(logFile);
-  
+    commandProcess.stdout.pipe(logFile, { end: false });
+    commandProcess.stderr.pipe(logFile, { end: false });
+
     // Handle process completion and re-run the command
     commandProcess.on('close', (code) => {
-      console.log(`Process exited with code ${code}. Re-running...`);
-      runCommand(); // Re-run the function to execute the command again
+        console.log(`Process exited with code ${code}. Re-running...`);
+        runCommand(); // Re-run the function to execute the command again
     });
-  
+
     // Handle any errors with the process
     commandProcess.on('error', (error) => {
-      console.error(`Error executing command: ${error.message}`);
-      runCommand(); // Re-run the function to try again
+        console.error(`Error executing command: ${error.message}`);
+        runCommand(); // Re-run the function to try again
     });
-  }
+
+    logFile.on('error', (error) => {
+        console.error(`Error writing to log file: ${error.message}`);
+    });
+
+    logFile.on('drain', () => {
+        console.log('Writable stream drained, resuming data flow.');
+        commandProcess.stdout.resume();
+        commandProcess.stderr.resume();
+    });
+};
 
 main();
-setInterval(main,3600000); // ping every 1 hour
+setInterval(main, 3600000); // ping every 1 hour
 runCommand(); // run the logging
