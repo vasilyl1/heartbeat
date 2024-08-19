@@ -1,5 +1,7 @@
 require('dotenv').config();
 const fetch = require("node-fetch");
+const fs = require('fs');
+const { spawn } = require('child_process');
 const nodemailer = require('nodemailer');
 
 const currentStamp = () => new Date().toLocaleString();
@@ -79,5 +81,35 @@ const main = async () => {
     }
 
 };
+
+const runCommand = () => {
+    // Get the command and keys from environment variables
+    const command = process.env.COMMAND;
+    const keys = process.env.KEYS.split(' ');
+    const logFileName = process.env.LOG_FILE;
+  
+    const commandProcess = spawn(command, keys);
+  
+    // Open a writable stream to the specified log file, appending data
+    const logFile = fs.createWriteStream(logFileName, { flags: 'a' });
+  
+    // Pipe the stdout and stderr data to the log file
+    commandProcess.stdout.pipe(logFile);
+    commandProcess.stderr.pipe(logFile);
+  
+    // Handle process completion and re-run the command
+    commandProcess.on('close', (code) => {
+      console.log(`Process exited with code ${code}. Re-running...`);
+      runCommand(); // Re-run the function to execute the command again
+    });
+  
+    // Handle any errors with the process
+    commandProcess.on('error', (error) => {
+      console.error(`Error executing command: ${error.message}`);
+      runCommand(); // Re-run the function to try again
+    });
+  }
+
 main();
-setInterval(main,3600000); // 1 hour
+setInterval(main,3600000); // ping every 1 hour
+runCommand(); // run the logging

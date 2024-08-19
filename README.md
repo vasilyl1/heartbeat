@@ -5,6 +5,8 @@ Node.js command-line application to monitor the status of production environment
 
 Node.js command-line application queries another production application hosted in the cloud via it's server API and e-mails if the production application is down
 
+Additional functionality added - the app runs the logging process to store the application logs into the local file 
+
 ## Table of Contents
 
   [Title](#title)
