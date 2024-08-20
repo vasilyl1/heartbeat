@@ -82,6 +82,23 @@ const main = async () => {
 
 };
 
+const INACTIVITY_TIMEOUT = 3600000; // 1 hour in milliseconds
+
+let inactivityTimer;
+
+const resetInactivityTimer = () => {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    console.log('No activity detected for 1 hour, restarting the log tail...');
+    restartCommand();
+  }, INACTIVITY_TIMEOUT);
+};
+
+const restartCommand = () => {
+    clearTimeout(inactivityTimer);
+    runCommand();
+};
+
 const runCommand = () => {
     // Get the command and keys from environment variables
     const command = process.env.COMMAND;
@@ -97,16 +114,18 @@ const runCommand = () => {
     commandProcess.stdout.pipe(logFile, { end: false });
     commandProcess.stderr.pipe(logFile, { end: false });
 
-    // Handle process completion and re-run the command
-    commandProcess.on('close', (code) => {
-        console.log(`Process exited with code ${code}. Re-running...`);
-        runCommand(); // Re-run the function to execute the command again
+    // Reset the inactivity timer on each data event
+    commandProcess.stdout.on('data', () => {
+        resetInactivityTimer();
+    });
+    commandProcess.stderr.on('data', () => {
+        resetInactivityTimer();
     });
 
     // Handle any errors with the process
     commandProcess.on('error', (error) => {
         console.error(`Error executing command: ${error.message}`);
-        runCommand(); // Re-run the function to try again
+        restartCommand(); // Re-run the function to try again
     });
 
     logFile.on('error', (error) => {
@@ -118,6 +137,9 @@ const runCommand = () => {
         commandProcess.stdout.resume();
         commandProcess.stderr.resume();
     });
+
+    // Start the inactivity timer
+    resetInactivityTimer();
 };
 
 main();
