@@ -82,7 +82,7 @@ const main = async () => {
 
 };
 
-const INACTIVITY_TIMEOUT = 3600000; // 1 hour in milliseconds
+const INACTIVITY_TIMEOUT = 3700000; // 1 hour in milliseconds
 
 let inactivityTimer;
 
@@ -96,6 +96,7 @@ const resetInactivityTimer = () => {
 
 const restartCommand = () => {
     clearTimeout(inactivityTimer);
+    commandProcess.kill(); // Terminate the current process
     runCommand();
 };
 
