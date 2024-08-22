@@ -85,43 +85,54 @@ const main = async () => {
 const INACTIVITY_TIMEOUT = 3700000; // 1 hour in milliseconds
 
 let inactivityTimer;
+let commandProcess;
+let logFile;
+
+// Get the command and keys from environment variables
+const command = process.env.COMMAND;
+const keys = process.env.KEYS.split(' ');
+const logFileName = process.env.LOG_FILE;
+
+// Function to create a new writable stream
+const createLogFileStream = () => {
+    if (logFile)
+        logFile.end(); // Close the previous stream if it exists
+    return fs.createWriteStream(logFileName, { flags: 'a' });
+};
 
 const resetInactivityTimer = () => {
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => {
-    console.log('No activity detected for 1 hour, restarting the log tail...');
-    restartCommand();
-  }, INACTIVITY_TIMEOUT);
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        console.log('No activity detected for 1 hour, restarting the log tail...');
+        restartCommand();
+    }, INACTIVITY_TIMEOUT);
 };
 
 const restartCommand = () => {
     clearTimeout(inactivityTimer);
-    commandProcess.kill(); // Terminate the current process
+    if (commandProcess) {
+        commandProcess.stdout.unpipe(logFile);
+        commandProcess.stderr.unpipe(logFile);
+        commandProcess.removeAllListeners('error');
+        commandProcess.removeAllListeners('exit');
+        commandProcess.kill(); // Terminate the current process
+    };
     runCommand();
 };
 
 const runCommand = () => {
-    // Get the command and keys from environment variables
-    const command = process.env.COMMAND;
-    const keys = process.env.KEYS.split(' ');
-    const logFileName = process.env.LOG_FILE;
 
-    const commandProcess = spawn(command, keys);
+    logFile = createLogFileStream(); // Create a new stream for each run
 
-    // Open a writable stream to the specified log file, appending data
-    const logFile = fs.createWriteStream(logFileName, { flags: 'a' });
+    commandProcess = spawn(command, keys);
 
     // Pipe the stdout and stderr data to the log file
     commandProcess.stdout.pipe(logFile, { end: false });
     commandProcess.stderr.pipe(logFile, { end: false });
 
-    // Reset the inactivity timer on each data event
-    commandProcess.stdout.on('data', () => {
-        resetInactivityTimer();
-    });
-    commandProcess.stderr.on('data', () => {
-        resetInactivityTimer();
-    });
+    // Reset inactivity timer on data event (indicating activity)
+    commandProcess.stdout.on('data', resetInactivityTimer);
+    commandProcess.stderr.on('data', resetInactivityTimer);
 
     // Handle any errors with the process
     commandProcess.on('error', (error) => {
@@ -129,14 +140,11 @@ const runCommand = () => {
         restartCommand(); // Re-run the function to try again
     });
 
-    logFile.on('error', (error) => {
-        console.error(`Error writing to log file: ${error.message}`);
-    });
-
-    logFile.on('drain', () => {
-        console.log('Writable stream drained, resuming data flow.');
-        commandProcess.stdout.resume();
-        commandProcess.stderr.resume();
+    // Handle the process exit to properly clean up
+    commandProcess.on('exit', () => {
+        commandProcess.stdout.unpipe(logFile);
+        commandProcess.stderr.unpipe(logFile);
+        logFile.end();
     });
 
     // Start the inactivity timer
