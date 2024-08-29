@@ -82,7 +82,7 @@ const main = async () => {
 
 };
 
-const INACTIVITY_TIMEOUT = 3700000; // 1 hour in milliseconds
+const INACTIVITY_TIMEOUT = 3500000; // 1 hour in milliseconds = 3600000
 
 let inactivityTimer;
 let commandProcess;
@@ -115,7 +115,9 @@ const restartCommand = () => {
         commandProcess.stderr.unpipe(logFile);
         commandProcess.removeAllListeners('error');
         commandProcess.removeAllListeners('exit');
+        commandProcess.removeAllListeners('data');
         commandProcess.kill(); // Terminate the current process
+        logFile.end(); // Close the log file stream
     };
     runCommand();
 };
