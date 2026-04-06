@@ -115,7 +115,9 @@ const restartCommand = () => {
         commandProcess.stderr.unpipe(logFile);
         commandProcess.removeAllListeners('error');
         commandProcess.removeAllListeners('exit');
-        commandProcess.removeAllListeners('data');
+        // commandProcess.removeAllListeners('data');
+        commandProcess.stdout.removeAllListeners('data');
+        commandProcess.stderr.removeAllListeners('data');
         commandProcess.kill(); // Terminate the current process
         logFile.end(); // Close the log file stream
     };
@@ -126,7 +128,12 @@ const runCommand = () => {
 
     logFile = createLogFileStream(); // Create a new stream for each run
 
-    commandProcess = spawn(command, keys);
+    commandProcess = spawn(command, keys, {
+        env: {
+            ...process.env,
+            NO_COLOR: '1'
+        }
+    });
 
     // Pipe the stdout and stderr data to the log file
     commandProcess.stdout.pipe(logFile, { end: false });
