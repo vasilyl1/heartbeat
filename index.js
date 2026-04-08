@@ -82,7 +82,7 @@ const main = async () => {
 
 };
 
-const INACTIVITY_TIMEOUT = 3500000; // 1 hour in milliseconds = 3600000
+const INACTIVITY_TIMEOUT = 3000000; // 1 hour in milliseconds = 3600000
 
 let inactivityTimer;
 let commandProcess;
@@ -150,10 +150,14 @@ const runCommand = () => {
     });
 
     // Handle the process exit to properly clean up
-    commandProcess.on('exit', () => {
+    commandProcess.on('exit', (code, signal) => {
+        console.log(`Process exited with code ${code}, signal ${signal}`);
         commandProcess.stdout.unpipe(logFile);
         commandProcess.stderr.unpipe(logFile);
         logFile.end();
+
+        // Restart after short delay
+        setTimeout(runCommand, 5000);
     });
 
     // Start the inactivity timer
